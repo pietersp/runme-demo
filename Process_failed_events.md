@@ -33,10 +33,17 @@ The easiest is to go to Kibana and look for the log with the failure details
 
 or stern
 
+```bash {"promptEnv":"false"}
+# Please select the kubernetes context you wish to use
+
+export KUBECONTEXT="gke_tal-pre-prod-logistics_europe-west1_logistics-gke1"
+# export KUBECONTEXT="gke_tal-production-logistics_europe-west1_logistics-gke1"
+```
+
 ```bash {"id":"01HFE4J8HJS2R1RW2XVER1B15R"}
 # Grab all the logs from the failed events and place them in a timestamped log file for further gymnastics
  
-ppstern --no-follow log-order-tracking-svc | grep "Unable to process order tracking event" | tee $(date +%s)-log-order-tracking.log
+stern --context $KUBECONTEXT --no-follow log-order-tracking-svc | grep "Unable to process order tracking event" | tee $(date +%s)-log-order-tracking.log
 ```
 
 ### Step **2 - Find out the reason for the failure**
@@ -59,12 +66,7 @@ You have 2 options
 The following is to get credentials for the express database (from `log-order-tracking-svc`)
 Copy the password for the db user
 
-```bash {"promptEnv":"false"}
-# Please select the kubernetes context you wish to use
 
-export KUBECONTEXT="gke_tal-pre-prod-logistics_europe-west1_logistics-gke1"
-# export KUBECONTEXT="gke_tal-production-logistics_europe-west1_logistics-gke1"
-```
 
 ```bash {"background":"false","interactive":"true"}
 export $(kubectl --context=$KUBECONTEXT exec deploy/log-order-tracking-svc -- printenv | grep EXPRESS_DB_PASSWORD)
