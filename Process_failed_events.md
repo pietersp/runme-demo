@@ -25,6 +25,19 @@ A common processing error includes timeouts to downstream endpoints such as SCO 
 
 ## **How To Address the Issue?**
 
+### Step 0 - Get the tools
+
+You will need the following tools for this runbook. Please install them locally if you have not done so.
+- Python
+- psql
+- jq
+
+```bash
+brew install jq
+brew install python
+brew install libpq
+```
+
 ### Step 1 - Get the events
 
 The easiest is to go to Kibana and look for the log with the failure details
@@ -33,7 +46,7 @@ The easiest is to go to Kibana and look for the log with the failure details
 
 or stern
 
-```bash {"promptEnv":"false"}
+```bash {"id":"01HFEEAJTZ2FG24VY3MNM7WSPG","promptEnv":"false"}
 # Please select the kubernetes context you wish to use
 
 export KUBECONTEXT="gke_tal-pre-prod-logistics_europe-west1_logistics-gke1"
@@ -42,6 +55,7 @@ export KUBECONTEXT="gke_tal-pre-prod-logistics_europe-west1_logistics-gke1"
 
 ```bash {"id":"01HFE4J8HJS2R1RW2XVER1B15R"}
 # Grab all the logs from the failed events and place them in a timestamped log file for further gymnastics
+# PLEASE NOTE YOU NEED STERN VERSION > 1.23.0 FOR THIS TO WORK
  
 stern --context $KUBECONTEXT --no-follow log-order-tracking-svc | grep "Unable to process order tracking event" | tee $(date +%s)-log-order-tracking.log
 ```
@@ -54,8 +68,7 @@ You have 2 options
 
    This flow is there specifically for parcels that don't exist in LOG yet. So you're going to need to dive a bit deeper to see why the events failed to process.
 
-     💡 Remember the scanning of Coke cans and sh*t [here](https://takealot.slack.com/archives/C010PT2R0NP/p1684494723648739?thread_ts=1684493394.499539&cid=C010PT2R0NP)
-
+   💡 Remember the scanning of Coke cans and sh*t [here](https://takealot.slack.com/archives/C010PT2R0NP/p1684494723648739?thread_ts=1684493394.499539&cid=C010PT2R0NP)
 
 - **Option 2: Got a valid parcel ID that needs to be replayed**
 
@@ -66,16 +79,13 @@ You have 2 options
 The following is to get credentials for the express database (from `log-order-tracking-svc`)
 Copy the password for the db user
 
-
-
-```bash {"background":"false","interactive":"true"}
+```bash {"background":"false","id":"01HFEEAJTZ2FG24VY3MQQ6Q8KR","interactive":"true"}
 export $(kubectl --context=$KUBECONTEXT exec deploy/log-order-tracking-svc -- printenv | grep EXPRESS_DB_PASSWORD)
-echo $EXPRESS_DB_PASSWORD
 ```
 
 The following SQL will retrieve all records that reached the maximum attempts and need to be replayed
 
-```bash
+```bash {"id":"01HFEEAJTZ2FG24VY3MR1C7PQ3"}
 export DATESTART="<ENTER DATE HERE>"
 
 echo "
@@ -88,7 +98,7 @@ FROM(
 ) t" > ./get_failed_events.sql
 ```
 
-```bash {"interactive":"false","mimeType":"application/json","terminalRows":"20"}
+```bash {"id":"01HFEEAJTZ2FG24VY3MTJ7FB16","interactive":"false","mimeType":"application/json","terminalRows":"20"}
 PGPASSWORD=$EXPRESS_DB_PASSWORD psql -U log-order-tracking-svc -h express.db.gcp.mrdexpress.uat -d postgis -t -f get_failed_events.sql | jq -s
 ```
 
