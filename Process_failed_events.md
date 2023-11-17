@@ -31,11 +31,13 @@ You will need the following tools for this runbook. Please install them locally 
 - Python
 - psql
 - jq
+- stern
 
 ```bash
 brew install jq
 brew install python
 brew install libpq
+brew install stern
 ```
 
 ### Step 1 - Get the events
@@ -52,6 +54,8 @@ or stern
 export KUBECONTEXT="gke_tal-pre-prod-logistics_europe-west1_logistics-gke1"
 # export KUBECONTEXT="gke_tal-production-logistics_europe-west1_logistics-gke1"
 ```
+
+**IMPORTANT**: Activate the VPN now
 
 ```bash {"id":"01HFE4J8HJS2R1RW2XVER1B15R"}
 # Grab all the logs from the failed events and place them in a timestamped log file for further gymnastics
@@ -77,7 +81,6 @@ You have 2 options
 ### **Part 3 - Resend the events**
 
 The following is to get credentials for the express database (from `log-order-tracking-svc`)
-Copy the password for the db user
 
 ```bash {"background":"false","id":"01HFEEAJTZ2FG24VY3MQQ6Q8KR","interactive":"true"}
 export $(kubectl --context=$KUBECONTEXT exec deploy/log-order-tracking-svc -- printenv | grep EXPRESS_DB_PASSWORD)
@@ -86,7 +89,7 @@ export $(kubectl --context=$KUBECONTEXT exec deploy/log-order-tracking-svc -- pr
 The following SQL will retrieve all records that reached the maximum attempts and need to be replayed
 
 ```bash {"id":"01HFEEAJTZ2FG24VY3MR1C7PQ3"}
-export DATESTART="<ENTER DATE HERE>"
+export DATESTART="2023-11-14"
 
 echo "
 SELECT row_to_json(t)
@@ -98,8 +101,10 @@ FROM(
 ) t" > ./get_failed_events.sql
 ```
 
+Run the following which will connect to the db and pull the info (from the query above) in json format
+
 ```bash {"id":"01HFEEAJTZ2FG24VY3MTJ7FB16","interactive":"false","mimeType":"application/json","terminalRows":"20"}
-PGPASSWORD=$EXPRESS_DB_PASSWORD psql -U log-order-tracking-svc -h express.db.gcp.mrdexpress.uat -d postgis -t -f get_failed_events.sql | jq -s
+PGPASSWORD=$EXPRESS_DB_PASSWORD psql -U log-order-tracking-svc -h express.db.gcp.mrdexpress.uat -d postgis -t -f get_failed_events.sql | jq -s | tee failed_events.json
 ```
 
 Run the following Python script which will replay all the failed entries
@@ -113,7 +118,9 @@ import os
 
 
 env_var = os.getenv('__')
-tracking_events = json.loads(env_var)
+f = open('failed_events.json')
+tracking_events = json.load(f)
+f.close()
 
 url = "http://log-order-tracking-svc.gcp.mrdexpress.uat/api/force-order-tracking"
 
