@@ -10,7 +10,9 @@ Owning team: LTT
 Keywords: on-call, supply-chain, tracking
 Last verified: July 7, 2023
 Status: Not started
-[![](https://badgen.net/badge/Open%20with/Runme/5B3ADF?icon=https://runme.dev/img/logo.svg)](https://runme.dev/api/runme?repository=https%3A%2F%2Fgithub.com%2Fmrdelivery%2Flog-order-tracking-svc.git%26fileToOpen%3Dplaybook%2FProcess_failed_events.md)
+
+[![](https://badgen.net/badge/Open%20with/Runme/5B3ADF?icon=https://runme.dev/img/logo.svg)](https://runme.dev/api/runme?repository=https%3A%2F%2Fgithub.com%2Fpietersp%2Frunme-demo.git%26fileToOpen%3DProcess_failed_events.md)
+
 ## **Description of Issue**
 
 The Order Tracking Service is responsible for receiving and processing Order Tracking Events. when an error occurs with processing a courier update, the service will automatically attempt to reprocess the record from the Kafka topic: log-order-tracking-events; if a failure occurs, a record is placed on the `log-order-tracking-events-retry` topic for reprocessing to take place.
